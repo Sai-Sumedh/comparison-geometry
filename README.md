@@ -1,6 +1,6 @@
 # comparison-geometry
 
-Code for the paper **"When Models Don't Manipulate Manifolds: The Geometry of a Comparison Task"** (&lt;venue / arXiv link&gt;).
+Code for the paper **"When Models Don't Manipulate Manifolds: The Geometry of a Comparison Task"**.
 
 The paper is a mechanistic analysis of how **Qwen2.5-7B-Instruct** computes `max(a, b)` (and
 `max(a, b, c)`) from a one-shot prompt. It demonstrates how the model uses linear representations of each number to perform comparison, despite the presence of number manifolds. It looks at where each number is represented in the
@@ -133,17 +133,6 @@ draws `app_u_vs_pc1.pdf` and `app_three_digit.pdf`.
   exploratory. The direction-cosine cell by probe site ("fig9") needs
   `from matplotlib.patches import Rectangle` added before it runs. The paper figure itself is
   unaffected.
-
-## Citation
-
-```bibtex
-@article{<key>,
-  title   = {When Models Don't Manipulate Manifolds: The Geometry of a Comparison Task},
-  author  = {Hindupur, Sai Sumedh R. and Orgad, Hadas and Fel, Thomas and Ba, Demba},
-  journal = {<venue / arXiv>},
-  year    = {2026}
-}
-```
 
 ## License
 
