@@ -1,0 +1,19 @@
+# Python / Jupyter
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+
+# Generated outputs (regenerate with the pipeline in README.md)
+experiments/results/*
+experiments/figs/*
+experiments/figs_mainpaper/*
+experiments/figs_appendix/
+!experiments/*/.gitkeep
+*.npz
+*.pdf
+*.png
+*.out
+*.err
+
+# Model cache
+hf_cache/
