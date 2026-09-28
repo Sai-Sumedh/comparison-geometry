@@ -14,7 +14,8 @@ Produces every figure of `paper/appendix_results.tex` (Appendix D) into `figs_ap
 | `compute_app_trace_k3.py <case>` | GPU: three-number causal trace, one case per job |
 | `compute_app_u_layers.py <layers>` | GPU: the layer-13 number analysis at earlier layers |
 | `compute_app_v2_shortcut.py` | GPU: rank-1 DAS at the position of y2 |
-| `makefig_appendix_computed.py` | 7 figures and the example table from the compute outputs |
+| `compute_app_whole_number.py` | GPU: IIA on the whole generated number vs first digit |
+| `makefig_appendix_computed.py` | 10 figures and 4 tables from the compute outputs |
 
 Workflow:
 
@@ -25,6 +26,7 @@ python compute_app_trace_k2.py
 python compute_app_trace_k3.py y1          # and y2, y3
 python compute_app_u_layers.py 1 3 5 7 9 11
 python compute_app_v2_shortcut.py
+python compute_app_whole_number.py
 python makefig_appendix_computed.py        # after the jobs finish; skips figures whose data is missing
 ```
 
@@ -107,6 +109,19 @@ All print `PROGRESS i/N` progress lines.
 - **`compute_app_v2_shortcut.py`** -> `results/app_v2_shortcut.npz`. It trains rank-1 DAS at y2's
   position with y2 perturbed, scores full / DAS / PC1(y2), and projects the cached y2 cloud onto it.
 
+- **`compute_app_whole_number.py`** -> `results/app_whole_number.npz`. The batch version of
+  `patching_model_behavior.ipynb` (see `docs/patching_model_behavior.md`). It loads u, v1, v2, the
+  (v1, v2) plane and the rank-1 L15 DAS direction (fitted with y1 perturbed) from the saved results
+  and runs each patch with `data_sharedrep.build_handles`, so every hook is the one behind the
+  saved IIA. The patches are full L13 and u at y1; v1 in the pre-MLP L14 residual; and full L13,
+  v2, v1 (inside H14's output), v1 & v2, the plane (pre-MLP), full L14 (end of block) and L15 DAS
+  at y2. They run on the 400 held-out counterfactuals, in the cases listed in `COND`. `generate` decodes 3
+  tokens greedily, with the hooks live on the prompt pass only, so the generated tokens read the
+  patch through the KV cache. Per run it saves `first` (argmax token == t(r), the IIA of every
+  figure), `whole` (the first integer of the decoded answer == r), `num` and `text`. It also saves
+  `clean_<case>`, `corr_<case>` and `r_<case>`, and logs the per-example agreement of `first` with
+  the saved IIA.
+
 ## `makefig_appendix_computed.py`
 
 Figures `behaviour` (accuracy vs number of operands only: pairwise accuracy is at ceiling, 100% and
@@ -116,3 +131,20 @@ is what the full-rank patch at y2's last token produces; `tab_patch_examples.tex
 examples per category and intervention), `trace_k2`, `probes_k2`, `trace_k3`, `u_layers` (layers found on disk plus 13),
 `v2_shortcut`. A figure whose inputs are missing is skipped with a message. Token tick labels mark
 each operand's last token as y_j; its first token is left blank; the space token is drawn as ␣.
+
+Whole-number figures and tables (`app_whole_number.npz`):
+
+| name | output | content |
+|---|---|---|
+| `whole_directions` | `app_whole_directions.pdf` | (a) first-digit and (b) whole-number IIA for full L13, u, v1, v1 pre-MLP (hatched) with y1 perturbed and full L13, v2 with y2 perturbed |
+| `whole_shared` | `app_whole_shared.pdf` | the six shared-representation patches in both cases, the two metrics side by side, joint patches hatched |
+| `whole_l15` | `app_whole_l15.pdf` | L15 DAS (rank 1, fitted with y1 perturbed) in both cases, both metrics |
+| `whole_iia` | `tab_whole_iia.tex` | first-digit and whole-number IIA per patch and case (`--` where not evaluated) |
+| `whole_examples` | `tab_whole_examples_a.tex`, `_b.tex` | 5 generations per patch (a: the patches of `whole_directions`; b: the rest) |
+
+`WHOLE_PATCHES` holds each patch's label and the cases where it is not a control, which are the
+cases its examples are drawn from. `whole_examples` takes examples in index order, alternating
+over those cases. It picks up to 2 correct answers, 2 with the right first digit but the wrong
+number, and 1 other mistake, then tops up to 5 in that order. Run only these with
+`python makefig_appendix_computed.py whole_directions whole_shared whole_l15 whole_iia whole_examples`,
+which leaves the other appendix figures untouched.

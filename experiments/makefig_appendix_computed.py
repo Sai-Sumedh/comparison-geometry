@@ -2,7 +2,7 @@
 
 Run from experiments/ once the jobs are done:
     python makefig_appendix_computed.py [figure_name ...]
-Also writes figs_appendix/tab_patch_examples.tex.
+Also writes figs_appendix/tab_patch_examples.tex, tab_whole_iia.tex and tab_whole_examples_{a,b}.tex.
 """
 
 import os
@@ -10,8 +10,8 @@ import sys
 
 import numpy as np
 
-from appendix_style import (COL, CASE2, LIGHT, Y, U, V2, PERT, SEQ_CM, SCAT, LABEL_FS,
-                            TICK_FS, FIGS_DIR, RESULTS_DIR, plt, load, style, letter, legend, save,
+from appendix_style import (COL, CASE2, LIGHT, Y, U, V1, V2, PERT, SEQ_CM, SCAT, LABEL_FS,
+                            LEGEND_FS, TICK_FS, FIGS_DIR, RESULTS_DIR, plt, load, style, letter, legend, save,
                             mse, aggregate, align_sign, fit_logx, cbar, wilson)
 
 U_LAYERS = [1, 3, 5, 7, 9, 11]
@@ -244,13 +244,177 @@ def fig_v2_shortcut():
     save(fig, 'app_v2_shortcut')
 
 
+# --------------------------------------------------------------------------------------------------
+# IIA on the whole generated number (compute_app_whole_number.py)
+# --------------------------------------------------------------------------------------------------
+WHOLE_METRICS = [('first', 'IIA, first digit'), ('whole', 'IIA, whole number')]
+WHOLE_CCOL = {'y1': CASE2['n1_larger'], 'y2': CASE2['n2_larger']}
+WHOLE_HATCH = '//'
+# key: (table / example label, cases where the patch is not a control)
+WHOLE_PATCHES = {
+    'L13_full_y1': (r'L13 full at $y_1$', ['y1']),
+    'u':           (r'$\mathbf{u}$', ['y1']),
+    'v1':          (r'$\mathbf{v}_1$', ['y1']),
+    'v1_premlp':   (r'$\mathbf{v}_1$, pre-MLP', ['y1']),
+    'L13_full_y2': (r'L13 full at $y_2$', ['y2']),
+    'v2':          (r'$\mathbf{v}_2$', ['y2']),
+    'v1_v2':       (r'$\mathbf{v}_1$ \& $\mathbf{v}_2$', ['y1', 'y2']),
+    'plane':       (r'$(\mathbf{v}_1, \mathbf{v}_2)$ plane', ['y1', 'y2']),
+    'L14_full':    (r'L14 full', ['y1', 'y2']),
+    'L15_das':     (r'L15 DAS', ['y1', 'y2']),
+}
+
+
+def whole_bar(ax, x, W, key, c, m, w, **kw):
+    mu, e = mse(W[f'{key}_{c}_{m}'])
+    ax.bar(x, mu, w, yerr=e, capsize=2.5, alpha=0.9, edgecolor='white', linewidth=0.6,
+           error_kw=dict(lw=1.0), **kw)
+
+
+def fig_whole_directions():
+    W = load('app_whole_number.npz')
+    groups = [('y1', [('L13_full_y1', 'full', COL['full'], None), ('u', U, COL['das'], None),
+                      ('v1', V1, COL['h14'], None),
+                      ('v1_premlp', f'{V1}, pre-MLP', COL['h14'], WHOLE_HATCH)]),
+              ('y2', [('L13_full_y2', 'full', COL['full'], None), ('v2', V2, COL['pc1'], None)])]
+    fig, axes = plt.subplots(1, 2, figsize=(14, 4.8))
+    w = 0.2
+    for i, (ax, (m, ylab)) in enumerate(zip(axes, WHOLE_METRICS)):
+        seen = set()
+        for gi, (c, bars) in enumerate(groups):
+            for k, (key, lab, col, hatch) in enumerate(bars):
+                whole_bar(ax, gi + (k - (len(bars) - 1) / 2) * w, W, key, c, m, w, color=col,
+                          hatch=hatch, label=None if lab in seen else lab)
+                seen.add(lab)
+        ax.set_xticks(range(len(groups)))
+        ax.set_xticklabels([PERT[c] for c, _ in groups], fontsize=TICK_FS)
+        ax.set_ylim(0, 1.05)
+        style(ax, ylabel=ylab)
+        letter(ax, 'ab'[i], x=-0.14)
+    legend(axes[1], loc='upper left', bbox_to_anchor=(1.0, 1.0))
+    fig.tight_layout()
+    save(fig, 'app_whole_directions')
+
+
+def fig_whole_shared():
+    W = load('app_whole_number.npz')
+    conds = [('L13_full_y2', 'L13 full', False), ('v2', V2, False), ('v1', V1, False),
+             ('v1_v2', f'{V1} & {V2}', True), ('plane', f'{V1}, {V2} plane', True),
+             ('L14_full', 'L14 full', False)]
+    fig, axes = plt.subplots(1, 2, figsize=(17, 5.0))
+    w = 0.38
+    for i, (ax, (m, ylab)) in enumerate(zip(axes, WHOLE_METRICS)):
+        for si, c in enumerate(('y1', 'y2')):
+            for gi, (key, _, joint) in enumerate(conds):
+                whole_bar(ax, gi + (si - 0.5) * w, W, key, c, m, w, color=WHOLE_CCOL[c],
+                          hatch=WHOLE_HATCH if joint else None,
+                          label=PERT[c] if (gi == 0 and i == 0) else None)
+        ax.set_xticks(range(len(conds)))
+        ax.set_xticklabels([cd[1] for cd in conds], fontsize=TICK_FS, rotation=20, ha='right')
+        ax.set_ylim(0, 1.05)
+        style(ax, xlabel='patched component', ylabel=ylab)
+        letter(ax, 'ab'[i], x=-0.12)
+    fig.tight_layout()
+    fig.legend(*axes[0].get_legend_handles_labels(), loc='lower center',
+               bbox_to_anchor=(0.5, 1.0), ncol=2, frameon=False, fontsize=LEGEND_FS)
+    save(fig, 'app_whole_shared')
+
+
+def fig_whole_l15():
+    W = load('app_whole_number.npz')
+    fig, ax = plt.subplots(figsize=(6.4, 4.8))
+    w = 0.38
+    for si, c in enumerate(('y1', 'y2')):
+        for k, (m, _) in enumerate(WHOLE_METRICS):
+            whole_bar(ax, k + (si - 0.5) * w, W, 'L15_das', c, m, w, color=WHOLE_CCOL[c],
+                      label=PERT[c] if k == 0 else None)
+    ax.set_xticks(range(len(WHOLE_METRICS)))
+    ax.set_xticklabels(['first digit', 'whole number'], fontsize=TICK_FS)
+    ax.set_ylim(0, 1.05)
+    style(ax, ylabel='IIA, DAS 1D at L15')
+    legend(ax, loc='lower center', bbox_to_anchor=(0.5, 1.0), ncol=2)
+    fig.tight_layout()
+    save(fig, 'app_whole_l15')
+
+
+def write_tex(name, tex):
+    path = os.path.join(FIGS_DIR, name)
+    with open(path, 'w') as f:
+        f.write(tex)
+    print(f'saved {path}', flush=True)
+
+
+def tab_whole_iia():
+    W = load('app_whole_number.npz')
+    rows = []
+    for key, (lab, _) in WHOLE_PATCHES.items():
+        cells = []
+        for c in ('y1', 'y2'):
+            for m, _ in WHOLE_METRICS:
+                k = f'{key}_{c}_{m}'
+                cells.append(f'{W[k].mean():.3f}' if k in W else '--')
+        rows.append(f'{lab} & ' + ' & '.join(cells) + r' \\')
+    body = '\n'.join(rows)
+    write_tex('tab_whole_iia.tex',
+              '\\begin{tabular}{lcccc}\n\\toprule\n'
+              ' & \\multicolumn{2}{c}{$y_1$ perturbed} & \\multicolumn{2}{c}{$y_2$ perturbed} \\\\\n'
+              '\\cmidrule(lr){2-3}\\cmidrule(lr){4-5}\n'
+              'patch & first digit & whole number & first digit & whole number \\\\\n'
+              f'\\midrule\n{body}\n\\bottomrule\n\\end{{tabular}}\n')
+
+
+def whole_examples(W, key, cases, n=5):
+    """Up to two correct answers, two with the right first digit only, one other mistake, topped
+    up to `n` in that order; examples are taken in index order, alternating over `cases`."""
+    idx = sorted((i, c) for c in cases for i in range(len(W[f'r_{c}'])))
+    first = lambda i, c: W[f'{key}_{c}_first'][i] == 1
+    whole = lambda i, c: W[f'{key}_{c}_whole'][i] == 1
+    pools = [[x for x in idx if whole(*x)],
+             [x for x in idx if first(*x) and not whole(*x)],
+             [x for x in idx if not first(*x)]]
+    pick = pools[0][:2] + pools[1][:2] + pools[2][:1]
+    for pool in pools:
+        for x in pool:
+            if len(pick) < n and x not in pick:
+                pick.append(x)
+    rank = {x: k for k, pool in enumerate(pools) for x in pool}
+    return sorted(pick[:n], key=lambda x: rank[x])       # correct first, then the mistakes
+
+
+def tab_whole_examples():
+    W = load('app_whole_number.npz')
+    for name, keys in (('tab_whole_examples_a.tex',
+                        ['L13_full_y1', 'u', 'v1', 'v1_premlp', 'L13_full_y2', 'v2']),
+                       ('tab_whole_examples_b.tex', ['v1_v2', 'plane', 'L14_full', 'L15_das'])):
+        blocks = []
+        for key in keys:
+            lab, cases = WHOLE_PATCHES[key]
+            rows = []
+            for j, (i, c) in enumerate(whole_examples(W, key, cases)):
+                cp, rp = W[f'clean_{c}'][i], W[f'corr_{c}'][i]
+                num = W[f'{key}_{c}_num'][i]
+                gen = str(num) if num >= 0 else f'\\texttt{{{W[f"{key}_{c}_text"][i].strip()}}}'
+                rows.append(f'{lab if j == 0 else ""} & {Y[int(c[1])]} & ({cp[0]}, {cp[1]}) & '
+                            f'({rp[0]}, {rp[1]}) & {W[f"r_{c}"][i]} & {gen} \\\\')
+            blocks.append('\n'.join(rows))
+        body = '\n\\midrule\n'.join(blocks)
+        write_tex(name, '\\begin{tabular}{llcccc}\n\\toprule\n'
+                        'patch & perturbed & clean $(y_1, y_2)$ & corrupted $(y_1, y_2)$ & $r$ & '
+                        'generated \\\\\n'
+                        f'\\midrule\n{body}\n\\bottomrule\n\\end{{tabular}}\n')
+
+
 FIGURES = {f.__name__[4:]: f for f in (fig_behaviour, fig_patch_outcomes, fig_trace_k2,
                                          fig_probes_k2, fig_trace_k3, fig_u_layers,
-                                         fig_v2_shortcut)}
+                                         fig_v2_shortcut, fig_whole_directions, fig_whole_shared,
+                                         fig_whole_l15, tab_whole_iia, tab_whole_examples)}
 NEEDS = {'behaviour': [], 'patch_outcomes': ['app_patch_outcomes.npz'],
          'trace_k2': ['app_trace_k2.npz'], 'probes_k2': ['app_probes_k2.npz'],
          'trace_k3': [f'app_trace_k3_{c}.npz' for c in ('y1', 'y2', 'y3')],
-         'u_layers': [], 'v2_shortcut': ['app_v2_shortcut.npz']}
+         'u_layers': [], 'v2_shortcut': ['app_v2_shortcut.npz'],
+         'whole_directions': ['app_whole_number.npz'], 'whole_shared': ['app_whole_number.npz'],
+         'whole_l15': ['app_whole_number.npz'], 'whole_iia': ['app_whole_number.npz'],
+         'whole_examples': ['app_whole_number.npz']}
 
 if __name__ == '__main__':
     for n in sys.argv[1:] or list(FIGURES):

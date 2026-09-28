@@ -23,6 +23,7 @@ comparison-geometry/
     ├── data_*.py                  # model computation, writes results/*.npz
     ├── explore_*.ipynb            # model computation + exploratory plots, writes results/*.npz
     ├── compute_app_*.py           # model computation for appendix-only analyses
+    ├── patching_model_behavior.ipynb  # generated answers under each patch (GPU)
     ├── makefig_*.ipynb            # main-paper figures (plotting only, no GPU)
     ├── makefig_appendix*.py       # appendix figures (plotting only, no GPU)
     ├── appendix_style.py          # shared style for the appendix figures
@@ -74,7 +75,7 @@ result, caches it to `results/`, and plots it straight away. On a re-run, blocks
 file instead of recomputing. `data_multicompare.py` and `data_multicompare2.py` hold the
 machinery these notebooks import; they are not run on their own.
 
-**Step 7: appendix computations.** Each takes 2–12 min on one GPU:
+**Step 7: appendix computations.** Each takes 1–12 min on one GPU:
 
 ```bash
 python compute_app_behaviour.py            # app_behaviour.npz, app_patch_outcomes.npz
@@ -82,9 +83,15 @@ python compute_app_trace_k2.py             # app_trace_k2.npz, app_probes_k2.npz
 python compute_app_trace_k3.py y1          # app_trace_k3_y1.npz (repeat for y2, y3)
 python compute_app_u_layers.py 1 3 5 7 9 11  # app_u_layers_L{layer}.npz
 python compute_app_v2_shortcut.py          # app_v2_shortcut.npz
+python compute_app_whole_number.py         # app_whole_number.npz
 ```
 
 These scripts are independent of each other, so they can run in parallel on separate GPUs.
+
+`patching_model_behavior.ipynb` is the interactive version of `compute_app_whole_number.py`. It
+greedy-decodes the answer under each patch, prints example generations, and compares IIA scored
+on the first digit with IIA scored on the whole generated number. It needs a GPU and
+`results/` from steps 1–3.
 
 ## Reproducing the figures
 
@@ -107,7 +114,7 @@ the PDF.
 
 ```bash
 python makefig_appendix.py            # 21 figures -> figs_appendix/
-python makefig_appendix_computed.py   # 7 figures + tab_patch_examples.tex -> figs_appendix/
+python makefig_appendix_computed.py   # 10 figures + 4 tables -> figs_appendix/
 ```
 
 Then run `makefig_multicompare_appendix.ipynb` to get `figs_appendix/app_k3_summary.pdf`. To
@@ -117,7 +124,7 @@ draws `app_u_vs_pc1.pdf` and `app_three_digit.pdf`.
 | Script | Figures (`figs_appendix/app_<name>.pdf`) |
 |---|---|
 | `makefig_appendix.py` | `u_vs_pc1`, `three_digit`, `u_manifold`, `k3_manifolds`, `transport`, `shared_probes`, `shared_posrec`, `mlp_freeze`, `attribution`, `rf_shared`, `rf_exclusive`, `connectivity`, `l15_direction`, `k3_heads`, `k3_directions`, `k3_dissociation`, `k3_neurons`, `k3_l15`, `k3_readout_pca`, `k3_readout_causal`, `ablation` |
-| `makefig_appendix_computed.py` | `behaviour`, `patch_outcomes` (+ `tab_patch_examples.tex`), `trace_k2`, `probes_k2`, `trace_k3`, `u_layers`, `v2_shortcut` |
+| `makefig_appendix_computed.py` | `behaviour`, `patch_outcomes` (+ `tab_patch_examples.tex`), `trace_k2`, `probes_k2`, `trace_k3`, `u_layers`, `v2_shortcut`, `whole_directions`, `whole_shared`, `whole_l15` (+ `tab_whole_iia.tex`, `tab_whole_examples_{a,b}.tex`) |
 | `makefig_multicompare_appendix.ipynb` | `k3_summary` |
 
 ## Notes
